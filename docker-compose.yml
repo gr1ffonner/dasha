@@ -1,0 +1,43 @@
+services:
+  website:
+    build: .
+    container_name: dasha-website
+    restart: unless-stopped
+    expose: [80/tcp]
+
+  caddy:
+    image: caddy:2.8
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - 0.0.0.0:80:80/tcp
+      - 0.0.0.0:443:443/tcp
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - ~/.caddy/data:/data
+      - ~/.caddy/config:/config
+      - ~/.caddy/logs:/logs
+    depends_on:
+      - website
+
+configs:
+  caddyfile:
+    content: |
+      kapelyshka.duckdns.org {
+          reverse_proxy website:80
+          log {
+              format console
+              output file /logs/website.log {
+                  roll_size 10mb
+                  roll_keep 20
+                  roll_keep_for 7d
+              }
+          }
+          encode {
+              zstd
+              gzip
+              minimum_length 1024
+          }
+      } 
