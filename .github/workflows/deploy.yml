@@ -23,9 +23,20 @@ jobs:
       - name: Deploy to VPS
         run: |
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} '
+            set -euo pipefail
             cd dasha &&
             git pull origin main &&
-            docker compose down &&
+            docker compose down --remove-orphans &&
             docker compose build --no-cache &&
+            if ss -Hln sport = :80 | grep -q :80; then
+              echo "Port 80 busy; stop the listed service before deploying." >&2
+              ss -ltnp sport = :80
+              exit 1
+            fi &&
+            if ss -Hln sport = :443 | grep -q :443; then
+              echo "Port 443 busy; stop the listed service before deploying." >&2
+              ss -ltnp sport = :443
+              exit 1
+            fi &&
             docker compose up -d
           ' 
